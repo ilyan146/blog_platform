@@ -26,7 +26,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-blog_ai_agent = { path = "../packages/blog_ai_agent", editable = true }
+blog_ai_agent = { workspace = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
