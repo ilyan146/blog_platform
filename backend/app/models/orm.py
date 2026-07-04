@@ -5,6 +5,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime
 
+from fastapi_users.db import SQLAlchemyBaseUserTable
 from sqlalchemy import (
     JSON,
     DateTime,
@@ -31,13 +32,14 @@ class DraftStatus(str, enum.Enum):
     PUBLISHED = "published"    # promoted to a Post
 
 
-class User(Base):
+class User(SQLAlchemyBaseUserTable[int], Base):
+    """Extends fastapi-users' base table (email, hashed_password, is_active,
+    is_superuser, is_verified) with our own fields."""
+
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(80))
-    hashed_password: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

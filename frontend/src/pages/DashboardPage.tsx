@@ -7,7 +7,7 @@ import {
   listDraftsOptions,
   listDraftsQueryKey,
 } from "../client/@tanstack/react-query.gen"
-import { getErrorMessage } from "../client/errors"
+import { getErrorMessage } from "../lib/apiErrors"
 import { StatusBadge } from "../components/StatusBadge"
 
 export function DashboardPage() {

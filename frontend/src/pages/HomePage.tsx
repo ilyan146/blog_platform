@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { listPostsOptions } from "../client/@tanstack/react-query.gen"
-import { getErrorMessage } from "../client/errors"
+import { getErrorMessage } from "../lib/apiErrors"
 
 export function HomePage() {
   const { isPending, error, data: posts = [] } = useQuery(listPostsOptions())

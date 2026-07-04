@@ -7,7 +7,7 @@ import {
 } from "react"
 import { login, me, register } from "../client"
 import type { TokenResponse, UserPublic } from "../client"
-import { tokenStore } from "../client/setup"
+import { tokenStore } from "../lib/apiClient"
 
 interface AuthState {
   user: UserPublic | null

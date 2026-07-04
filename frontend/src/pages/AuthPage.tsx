@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import { getErrorMessage } from "../client/errors"
+import { getErrorMessage } from "../lib/apiErrors"
 import { useAuth } from "../hooks/useAuth"
 
 export function AuthPage() {

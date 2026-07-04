@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useParams } from "react-router-dom"
 import { getPostOptions } from "../client/@tanstack/react-query.gen"
-import { getErrorMessage } from "../client/errors"
+import { getErrorMessage } from "../lib/apiErrors"
 import { Markdown } from "../components/Markdown"
 
 export function PostPage() {

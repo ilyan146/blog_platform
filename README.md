@@ -93,11 +93,12 @@ is fully generated from the backend's OpenAPI schema via
   const { isPending, error, data: posts = [] } = useQuery(listPostsOptions())
   ```
 
-Only two files under `src/client/` are hand-written (not regenerated):
-`setup.ts` (configures the client's base URL and attaches the auth token to
-every request) and `errors.ts` (turns the error body the client throws into a
-displayable message). Everything else is generated output and should not be
-edited directly.
+Only `src/client/` itself is generated output and should not be edited
+directly — `npm run generate-client` wipes and rewrites the whole folder on
+every run. The two small hand-written pieces that glue it into the app live
+outside that folder, in `src/lib/`: `apiClient.ts` (configures the client's
+base URL and attaches the auth token to every request) and `apiErrors.ts`
+(turns the error body the client throws into a displayable message).
 
 **Whenever you change a backend route or Pydantic schema**, regenerate the
 client so the frontend stays in sync:
@@ -137,8 +138,12 @@ and the AI writer are injected dependencies (`app/dependencies.py`, `app/ai.py`)
   output fails loudly rather than persisting garbage.
 - **Async end to end.** AI calls are I/O-bound, so the stack is async
   (FastAPI + async SQLAlchemy + asyncpg) to avoid blocking the event loop.
-- **Auth via JWT.** Stateless tokens → the API scales horizontally with no shared
-  session store.
+- **Auth via JWT, powered by fastapi-users.** `app/auth/manager.py` wires up
+  [fastapi-users](https://fastapi-users.github.io/fastapi-users/) (Argon2
+  password hashing, `SQLAlchemyUserDatabase`, JWT bearer auth) behind the same
+  `/api/auth/register` · `/login` · `/me` routes and response shapes as
+  before — no hand-rolled password hashing or token encode/decode code.
+  Stateless tokens → the API scales horizontally with no shared session store.
 - **Generated, typed API client.** The frontend's `src/client/` is generated
   from the backend's OpenAPI schema (hey-api), pairing typed request functions
   with TanStack Query options/mutations, so request/response types and query
