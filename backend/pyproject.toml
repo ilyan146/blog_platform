@@ -10,8 +10,7 @@ dependencies = [
     "asyncpg>=0.29",
     "pydantic>=2.7",
     "pydantic-settings>=2.2",
-    "python-jose[cryptography]>=3.3",
-    "bcrypt>=4.1",
+    "fastapi-users[sqlalchemy]>=15.0",
     "python-multipart>=0.0.9",
     "blog_ai_agent",
 ]
@@ -26,7 +25,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-blog_ai_agent = { path = "../packages/blog_ai_agent", editable = true }
+blog_ai_agent = { workspace = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

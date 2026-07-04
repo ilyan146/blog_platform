@@ -5,11 +5,12 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { api, tokenStore } from "../api"
-import type { TokenResponse, User } from "../types"
+import { login, me, register } from "../client"
+import type { TokenResponse, UserPublic } from "../client"
+import { tokenStore } from "../lib/apiClient"
 
 interface AuthState {
-  user: User | null
+  user: UserPublic | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (
@@ -23,7 +24,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserPublic | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Restore session on first load if a token is present.
@@ -32,26 +33,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return
     }
-    api
-      .get<User>("/api/auth/me")
-      .then(setUser)
+    me({ throwOnError: true })
+      .then(({ data }) => setUser(data))
       .catch(() => tokenStore.clear())
       .finally(() => setLoading(false))
   }, [])
 
-  async function handle(path: string, body: unknown) {
-    const res = await api.post<TokenResponse>(path, body)
-    tokenStore.set(res.access_token)
-    setUser(res.user)
+  async function handle(response: Promise<{ data: TokenResponse }>) {
+    const { data } = await response
+    tokenStore.set(data.access_token)
+    setUser(data.user)
   }
 
   const value: AuthState = {
     user,
     loading,
     login: (email, password) =>
-      handle("/api/auth/login", { email, password }),
+      handle(login({ body: { email, password }, throwOnError: true })),
     register: (email, display_name, password) =>
-      handle("/api/auth/register", { email, display_name, password }),
+      handle(
+        register({
+          body: { email, display_name, password },
+          throwOnError: true,
+        }),
+      ),
     logout: () => {
       tokenStore.clear()
       setUser(null)

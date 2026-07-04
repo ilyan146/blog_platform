@@ -1,13 +1,56 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useDraft } from "../hooks/useDrafts"
+import {
+  editDraftMutation,
+  generateDraftMutation,
+  getDraftOptions,
+  getDraftQueryKey,
+  listDraftsQueryKey,
+  listPostsQueryKey,
+  publishDraftMutation,
+} from "../client/@tanstack/react-query.gen"
+import { getErrorMessage } from "../lib/apiErrors"
 import { StatusBadge } from "../components/StatusBadge"
 
 export function DraftPage() {
   const { id } = useParams()
   const draftId = Number(id)
   const navigate = useNavigate()
-  const { draft, busy, error, generate, save, publish } = useDraft(draftId)
+  const queryClient = useQueryClient()
+
+  const {
+    isPending,
+    error,
+    data: draft,
+  } = useQuery(getDraftOptions({ path: { draft_id: draftId } }))
+
+  const generateMutation = useMutation({
+    ...generateDraftMutation(),
+    onSuccess: (d) =>
+      queryClient.setQueryData(getDraftQueryKey({ path: { draft_id: draftId } }), d),
+  })
+
+  const saveMutation = useMutation({
+    ...editDraftMutation(),
+    onSuccess: (d) =>
+      queryClient.setQueryData(getDraftQueryKey({ path: { draft_id: draftId } }), d),
+  })
+
+  const publishMutation = useMutation({
+    ...publishDraftMutation(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: listDraftsQueryKey() })
+      queryClient.invalidateQueries({ queryKey: listPostsQueryKey() })
+    },
+  })
+
+  const busy =
+    generateMutation.isPending ||
+    saveMutation.isPending ||
+    publishMutation.isPending
+  const mutationError =
+    generateMutation.error ?? saveMutation.error ?? publishMutation.error
 
   // Local editable copy of the generated content.
   const [title, setTitle] = useState("")
@@ -22,13 +65,22 @@ export function DraftPage() {
     }
   }, [draft])
 
-  if (!draft) return <p>{error ?? "Loading…"}</p>
+  if (isPending) return <p>Loading…</p>
+
+  if (error)
+    return <p className="error">An error has occurred: {getErrorMessage(error)}</p>
 
   const hasContent = draft.status === "ready" || draft.status === "published"
 
   async function handlePublish() {
-    const slug = await publish()
-    if (slug) navigate(`/posts/${slug}`)
+    try {
+      const post = await publishMutation.mutateAsync({
+        path: { draft_id: draftId },
+      })
+      navigate(`/posts/${post.slug}`)
+    } catch {
+      // surfaced via publishMutation.error below
+    }
   }
 
   return (
@@ -38,14 +90,19 @@ export function DraftPage() {
         <StatusBadge status={draft.status} />
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {mutationError && (
+        <p className="error">{getErrorMessage(mutationError)}</p>
+      )}
 
       {!hasContent && (
         <div className="card">
           <p className="muted">
             Tone: {draft.tone} · Audience: {draft.audience}
           </p>
-          <button onClick={generate} disabled={busy}>
+          <button
+            onClick={() => generateMutation.mutate({ path: { draft_id: draftId } })}
+            disabled={busy}
+          >
             {busy ? "Writing your 5-minute read…" : "Generate with AI"}
           </button>
           {draft.status === "failed" && (
@@ -81,12 +138,24 @@ export function DraftPage() {
               className="secondary"
               disabled={busy}
               onClick={() =>
-                save({ title, excerpt, body_markdown: body, tags: draft.tags })
+                saveMutation.mutate({
+                  path: { draft_id: draftId },
+                  body: {
+                    title,
+                    excerpt,
+                    body_markdown: body,
+                    tags: draft.tags,
+                  },
+                })
               }
             >
               Save edits
             </button>
-            <button onClick={generate} className="secondary" disabled={busy}>
+            <button
+              onClick={() => generateMutation.mutate({ path: { draft_id: draftId } })}
+              className="secondary"
+              disabled={busy}
+            >
               Regenerate
             </button>
             {draft.status !== "published" && (

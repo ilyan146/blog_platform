@@ -1,15 +1,20 @@
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { usePosts } from "../hooks/usePosts"
+import { listPostsOptions } from "../client/@tanstack/react-query.gen"
+import { getErrorMessage } from "../lib/apiErrors"
 
 export function HomePage() {
-  const { posts, loading } = usePosts()
+  const { isPending, error, data: posts = [] } = useQuery(listPostsOptions())
+
+  if (isPending) return <p>Loading…</p>
+
+  if (error)
+    return <p className="error">An error has occurred: {getErrorMessage(error)}</p>
 
   return (
     <div className="stack">
       <h1>Latest posts</h1>
-      {loading ? (
-        <p>Loading…</p>
-      ) : posts.length === 0 ? (
+      {posts.length === 0 ? (
         <p className="muted">No posts published yet.</p>
       ) : (
         <ul className="list">

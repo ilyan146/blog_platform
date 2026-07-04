@@ -1,10 +1,26 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { useDrafts } from "../hooks/useDrafts"
+import type { DraftPublic } from "../client"
+import {
+  createDraftMutation,
+  listDraftsOptions,
+  listDraftsQueryKey,
+} from "../client/@tanstack/react-query.gen"
+import { getErrorMessage } from "../lib/apiErrors"
 import { StatusBadge } from "../components/StatusBadge"
 
 export function DashboardPage() {
-  const { drafts, loading, create } = useDrafts()
+  const queryClient = useQueryClient()
+  const { isPending, error, data: drafts = [] } = useQuery(listDraftsOptions())
+  const createDraft = useMutation({
+    ...createDraftMutation(),
+    onSuccess: (draft) =>
+      queryClient.setQueryData<DraftPublic[]>(listDraftsQueryKey(), (prev) => [
+        draft,
+        ...(prev ?? []),
+      ]),
+  })
   const navigate = useNavigate()
   const [topic, setTopic] = useState("")
   const [tone, setTone] = useState("conversational")
@@ -14,7 +30,7 @@ export function DashboardPage() {
     e.preventDefault()
     setBusy(true)
     try {
-      const draft = await create({ topic, tone })
+      const draft = await createDraft.mutateAsync({ body: { topic, tone } })
       navigate(`/drafts/${draft.id}`)
     } finally {
       setBusy(false)
@@ -44,8 +60,10 @@ export function DashboardPage() {
       </div>
 
       <h2>Your drafts</h2>
-      {loading ? (
+      {isPending ? (
         <p>Loading…</p>
+      ) : error ? (
+        <p className="error">An error has occurred: {getErrorMessage(error)}</p>
       ) : drafts.length === 0 ? (
         <p className="muted">No drafts yet. Create one above.</p>
       ) : (

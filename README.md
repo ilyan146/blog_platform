@@ -15,8 +15,8 @@ frontend/ (React)          backend/ (FastAPI)                packages/
 ─────────────────          ──────────────────────────────    ──────────────────
 component                  api/      thin HTTP routes        blog_ai_agent/
   └─ hook                    └─ services/  business logic       (Pydantic AI +
-       └─ api.ts                  └─ repositories (db.py)        Azure Foundry)
-                                       └─ models/orm.py
+       └─ src/client/          └─ repositories (db.py)          Azure Foundry)
+          (generated)             └─ models/orm.py
 ```
 
 The single rule: **each layer has one reason to change.**
@@ -28,7 +28,7 @@ The single rule: **each layer has one reason to change.**
 | Business logic | `backend/app/services/` | Draft lifecycle, auth, publishing. No HTTP, no raw SQL. |
 | Data | `backend/app/models/orm.py` + `db.py` | SQLAlchemy 2.0 async + Postgres. |
 | Contracts | `backend/app/models/schemas.py` | Pydantic request/response shapes. |
-| UI | `frontend/src/` | Components → hooks → `api.ts`. Only hooks touch the network. |
+| UI | `frontend/src/` | Components → hooks → generated client (`src/client/`). Only hooks touch the network. |
 
 ### The authoring flow
 
@@ -72,6 +72,48 @@ npm install
 npm run dev
 ```
 
+## Frontend API client (generated)
+
+The frontend never hand-writes fetch calls or API types. `frontend/src/client/`
+is fully generated from the backend's OpenAPI schema via
+[hey-api](https://heyapi.dev) (`@hey-api/openapi-ts`) and includes:
+
+- Typed request functions per endpoint (`sdk.gen.ts`) and response/schema types
+  (`types.gen.ts`) — one-to-one with the backend's Pydantic schemas.
+- Ready-made [TanStack Query](https://tanstack.com/query) options
+  (`src/client/@tanstack/react-query.gen.ts`): a `*Options()` factory for every
+  `GET` route (e.g. `listPostsOptions()`, `getDraftOptions()`) to drop straight
+  into `useQuery`, and a `*Mutation()` factory for every write route (e.g.
+  `createDraftMutation()`, `publishDraftMutation()`) to drop into `useMutation`.
+  Matching `*QueryKey()` functions (e.g. `listDraftsQueryKey()`) are used for
+  cache updates/invalidation — for example, publishing a draft invalidates both
+  the drafts list and the posts list so `HomePage` picks up the new post.
+- Pages consume these directly, e.g.:
+  ```ts
+  const { isPending, error, data: posts = [] } = useQuery(listPostsOptions())
+  ```
+
+Only `src/client/` itself is generated output and should not be edited
+directly — `npm run generate-client` wipes and rewrites the whole folder on
+every run. The two small hand-written pieces that glue it into the app live
+outside that folder, in `src/lib/`: `apiClient.ts` (configures the client's
+base URL and attaches the auth token to every request) and `apiErrors.ts`
+(turns the error body the client throws into a displayable message).
+
+**Whenever you change a backend route or Pydantic schema**, regenerate the
+client so the frontend stays in sync:
+
+```bash
+# 1. Export the backend's OpenAPI schema to frontend/openapi.json
+uv run --package blog-platform-backend python backend/scripts/export_openapi.py
+
+# 2. Regenerate the typed client from that schema
+cd frontend && npm run generate-client
+```
+
+No running Postgres/Azure connection is required for step 1 — the export
+script only imports the FastAPI app to read its route definitions.
+
 ## Tests
 
 ```bash
@@ -96,8 +138,16 @@ and the AI writer are injected dependencies (`app/dependencies.py`, `app/ai.py`)
   output fails loudly rather than persisting garbage.
 - **Async end to end.** AI calls are I/O-bound, so the stack is async
   (FastAPI + async SQLAlchemy + asyncpg) to avoid blocking the event loop.
-- **Auth via JWT.** Stateless tokens → the API scales horizontally with no shared
-  session store.
+- **Auth via JWT, powered by fastapi-users.** `app/auth/manager.py` wires up
+  [fastapi-users](https://fastapi-users.github.io/fastapi-users/) (Argon2
+  password hashing, `SQLAlchemyUserDatabase`, JWT bearer auth) behind the same
+  `/api/auth/register` · `/login` · `/me` routes and response shapes as
+  before — no hand-rolled password hashing or token encode/decode code.
+  Stateless tokens → the API scales horizontally with no shared session store.
+- **Generated, typed API client.** The frontend's `src/client/` is generated
+  from the backend's OpenAPI schema (hey-api), pairing typed request functions
+  with TanStack Query options/mutations, so request/response types and query
+  cache keys can't drift out of sync with the actual API contract.
 - **Domain errors, not HTTP, in services.** `app/errors.py` defines `AppError`
   subclasses mapped to status codes in `main.py`, keeping services HTTP-free.
 
