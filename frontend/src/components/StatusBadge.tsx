@@ -1,4 +1,4 @@
-import type { DraftStatus } from "../types"
+import type { DraftStatus } from "../client"
 
 const COLORS: Record<DraftStatus, string> = {
   pending: "#6b7280",

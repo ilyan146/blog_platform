@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { api } from "../api"
-import { queryKeys } from "../queryKeys"
+import {
+  editDraftMutation,
+  generateDraftMutation,
+  getDraftOptions,
+  getDraftQueryKey,
+  listDraftsQueryKey,
+  listPostsQueryKey,
+  publishDraftMutation,
+} from "../client/@tanstack/react-query.gen"
+import { getErrorMessage } from "../client/errors"
 import { StatusBadge } from "../components/StatusBadge"
-import type { Draft } from "../types"
 
 export function DraftPage() {
   const { id } = useParams()
@@ -16,32 +23,25 @@ export function DraftPage() {
     isPending,
     error,
     data: draft,
-  } = useQuery({
-    queryKey: queryKeys.draft(draftId),
-    queryFn: () => api.get<Draft>(`/api/drafts/${draftId}`),
-  })
+  } = useQuery(getDraftOptions({ path: { draft_id: draftId } }))
 
   const generateMutation = useMutation({
-    mutationFn: () => api.post<Draft>(`/api/drafts/${draftId}/generate`),
-    onSuccess: (d) => queryClient.setQueryData(queryKeys.draft(draftId), d),
+    ...generateDraftMutation(),
+    onSuccess: (d) =>
+      queryClient.setQueryData(getDraftQueryKey({ path: { draft_id: draftId } }), d),
   })
 
   const saveMutation = useMutation({
-    mutationFn: (body: {
-      title: string
-      excerpt: string
-      body_markdown: string
-      tags: string[]
-    }) => api.put<Draft>(`/api/drafts/${draftId}`, body),
-    onSuccess: (d) => queryClient.setQueryData(queryKeys.draft(draftId), d),
+    ...editDraftMutation(),
+    onSuccess: (d) =>
+      queryClient.setQueryData(getDraftQueryKey({ path: { draft_id: draftId } }), d),
   })
 
   const publishMutation = useMutation({
-    mutationFn: () =>
-      api.post<{ slug: string }>(`/api/drafts/${draftId}/publish`),
+    ...publishDraftMutation(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.drafts })
-      queryClient.invalidateQueries({ queryKey: queryKeys.posts })
+      queryClient.invalidateQueries({ queryKey: listDraftsQueryKey() })
+      queryClient.invalidateQueries({ queryKey: listPostsQueryKey() })
     },
   })
 
@@ -49,9 +49,8 @@ export function DraftPage() {
     generateMutation.isPending ||
     saveMutation.isPending ||
     publishMutation.isPending
-  const mutationError = (generateMutation.error ??
-    saveMutation.error ??
-    publishMutation.error) as Error | null
+  const mutationError =
+    generateMutation.error ?? saveMutation.error ?? publishMutation.error
 
   // Local editable copy of the generated content.
   const [title, setTitle] = useState("")
@@ -68,13 +67,16 @@ export function DraftPage() {
 
   if (isPending) return <p>Loading…</p>
 
-  if (error) return <p className="error">An error has occurred: {error.message}</p>
+  if (error)
+    return <p className="error">An error has occurred: {getErrorMessage(error)}</p>
 
   const hasContent = draft.status === "ready" || draft.status === "published"
 
   async function handlePublish() {
     try {
-      const post = await publishMutation.mutateAsync()
+      const post = await publishMutation.mutateAsync({
+        path: { draft_id: draftId },
+      })
       navigate(`/posts/${post.slug}`)
     } catch {
       // surfaced via publishMutation.error below
@@ -88,14 +90,19 @@ export function DraftPage() {
         <StatusBadge status={draft.status} />
       </div>
 
-      {mutationError && <p className="error">{mutationError.message}</p>}
+      {mutationError && (
+        <p className="error">{getErrorMessage(mutationError)}</p>
+      )}
 
       {!hasContent && (
         <div className="card">
           <p className="muted">
             Tone: {draft.tone} · Audience: {draft.audience}
           </p>
-          <button onClick={() => generateMutation.mutate()} disabled={busy}>
+          <button
+            onClick={() => generateMutation.mutate({ path: { draft_id: draftId } })}
+            disabled={busy}
+          >
             {busy ? "Writing your 5-minute read…" : "Generate with AI"}
           </button>
           {draft.status === "failed" && (
@@ -132,17 +139,20 @@ export function DraftPage() {
               disabled={busy}
               onClick={() =>
                 saveMutation.mutate({
-                  title,
-                  excerpt,
-                  body_markdown: body,
-                  tags: draft.tags,
+                  path: { draft_id: draftId },
+                  body: {
+                    title,
+                    excerpt,
+                    body_markdown: body,
+                    tags: draft.tags,
+                  },
                 })
               }
             >
               Save edits
             </button>
             <button
-              onClick={() => generateMutation.mutate()}
+              onClick={() => generateMutation.mutate({ path: { draft_id: draftId } })}
               className="secondary"
               disabled={busy}
             >

@@ -1,18 +1,15 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { api } from "../api"
-import { queryKeys } from "../queryKeys"
-import type { PostSummary } from "../types"
+import { listPostsOptions } from "../client/@tanstack/react-query.gen"
+import { getErrorMessage } from "../client/errors"
 
 export function HomePage() {
-  const { isPending, error, data: posts = [] } = useQuery({
-    queryKey: queryKeys.posts,
-    queryFn: () => api.get<PostSummary[]>("/api/posts"),
-  })
+  const { isPending, error, data: posts = [] } = useQuery(listPostsOptions())
 
   if (isPending) return <p>Loading…</p>
 
-  if (error) return <p className="error">An error has occurred: {error.message}</p>
+  if (error)
+    return <p className="error">An error has occurred: {getErrorMessage(error)}</p>
 
   return (
     <div className="stack">

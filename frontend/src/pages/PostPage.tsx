@@ -1,21 +1,20 @@
 import { useQuery } from "@tanstack/react-query"
 import { useParams } from "react-router-dom"
-import { api } from "../api"
-import { queryKeys } from "../queryKeys"
+import { getPostOptions } from "../client/@tanstack/react-query.gen"
+import { getErrorMessage } from "../client/errors"
 import { Markdown } from "../components/Markdown"
-import type { Post } from "../types"
 
 export function PostPage() {
   const { slug } = useParams()
   const { isPending, error, data: post } = useQuery({
-    queryKey: queryKeys.post(slug!),
-    queryFn: () => api.get<Post>(`/api/posts/${slug}`),
+    ...getPostOptions({ path: { slug: slug! } }),
     enabled: !!slug,
   })
 
   if (isPending) return <p>Loading…</p>
 
-  if (error) return <p className="error">An error has occurred: {error.message}</p>
+  if (error)
+    return <p className="error">An error has occurred: {getErrorMessage(error)}</p>
 
   return (
     <article className="stack">

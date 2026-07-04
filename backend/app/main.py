@@ -22,7 +22,15 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="AI Blog Platform", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="AI Blog Platform",
+    version="0.1.0",
+    lifespan=lifespan,
+    # Clean, stable operation IDs (e.g. "list_posts") so generated frontend
+    # clients (hey-api) get readable function names instead of the default
+    # "list_posts_api_posts_get" style ids.
+    generate_unique_id_function=lambda route: route.name,
+)
 
 # CORS first so browser preflight (OPTIONS) is handled before anything else.
 app.add_middleware(

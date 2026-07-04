@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
+import { getErrorMessage } from "../client/errors"
 import { useAuth } from "../hooks/useAuth"
 
 export function AuthPage() {
@@ -21,7 +22,7 @@ export function AuthPage() {
       else await register(email, displayName, password)
       navigate("/dashboard")
     } catch (err) {
-      setError((err as Error).message)
+      setError(getErrorMessage(err))
     } finally {
       setBusy(false)
     }
