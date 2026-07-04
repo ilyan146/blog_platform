@@ -3,8 +3,9 @@
 A multi-user platform where authors generate **5-minute-read** blog posts with an
 AI agent (Pydantic AI + Azure AI Foundry), review/edit the result, and publish.
 
-Built as a clean, layered full-stack app: **React + FastAPI + a framework-free
-Python package**, containerised for Azure.
+Built as a clean, layered full-stack app: a **React single-page application
+(SPA)** talking to a **FastAPI** backend, plus a standalone Python package
+(built on **Pydantic AI**) for the AI agent, containerised for Azure.
 
 ---
 
@@ -28,7 +29,7 @@ The single rule: **each layer has one reason to change.**
 | Business logic | `backend/app/services/` | Draft lifecycle, auth, publishing. No HTTP, no raw SQL. |
 | Data | `backend/app/models/orm.py` + `db.py` | SQLAlchemy 2.0 async + Postgres. |
 | Contracts | `backend/app/models/schemas.py` | Pydantic request/response shapes. |
-| UI | `frontend/src/` | Components → hooks → generated client (`src/client/`). Only hooks touch the network. |
+| UI | `frontend/src/` | Client-side-routed React SPA (`react-router-dom`'s `createBrowserRouter`). Components → hooks → generated client (`src/client/`). Only hooks touch the network. |
 
 ### The authoring flow
 
