@@ -1,13 +1,57 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useDraft } from "../hooks/useDrafts"
+import { api } from "../api"
+import { queryKeys } from "../queryKeys"
 import { StatusBadge } from "../components/StatusBadge"
+import type { Draft } from "../types"
 
 export function DraftPage() {
   const { id } = useParams()
   const draftId = Number(id)
   const navigate = useNavigate()
-  const { draft, busy, error, generate, save, publish } = useDraft(draftId)
+  const queryClient = useQueryClient()
+
+  const {
+    isPending,
+    error,
+    data: draft,
+  } = useQuery({
+    queryKey: queryKeys.draft(draftId),
+    queryFn: () => api.get<Draft>(`/api/drafts/${draftId}`),
+  })
+
+  const generateMutation = useMutation({
+    mutationFn: () => api.post<Draft>(`/api/drafts/${draftId}/generate`),
+    onSuccess: (d) => queryClient.setQueryData(queryKeys.draft(draftId), d),
+  })
+
+  const saveMutation = useMutation({
+    mutationFn: (body: {
+      title: string
+      excerpt: string
+      body_markdown: string
+      tags: string[]
+    }) => api.put<Draft>(`/api/drafts/${draftId}`, body),
+    onSuccess: (d) => queryClient.setQueryData(queryKeys.draft(draftId), d),
+  })
+
+  const publishMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ slug: string }>(`/api/drafts/${draftId}/publish`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.drafts })
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts })
+    },
+  })
+
+  const busy =
+    generateMutation.isPending ||
+    saveMutation.isPending ||
+    publishMutation.isPending
+  const mutationError = (generateMutation.error ??
+    saveMutation.error ??
+    publishMutation.error) as Error | null
 
   // Local editable copy of the generated content.
   const [title, setTitle] = useState("")
@@ -22,13 +66,19 @@ export function DraftPage() {
     }
   }, [draft])
 
-  if (!draft) return <p>{error ?? "Loading…"}</p>
+  if (isPending) return <p>Loading…</p>
+
+  if (error) return <p className="error">An error has occurred: {error.message}</p>
 
   const hasContent = draft.status === "ready" || draft.status === "published"
 
   async function handlePublish() {
-    const slug = await publish()
-    if (slug) navigate(`/posts/${slug}`)
+    try {
+      const post = await publishMutation.mutateAsync()
+      navigate(`/posts/${post.slug}`)
+    } catch {
+      // surfaced via publishMutation.error below
+    }
   }
 
   return (
@@ -38,14 +88,14 @@ export function DraftPage() {
         <StatusBadge status={draft.status} />
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {mutationError && <p className="error">{mutationError.message}</p>}
 
       {!hasContent && (
         <div className="card">
           <p className="muted">
             Tone: {draft.tone} · Audience: {draft.audience}
           </p>
-          <button onClick={generate} disabled={busy}>
+          <button onClick={() => generateMutation.mutate()} disabled={busy}>
             {busy ? "Writing your 5-minute read…" : "Generate with AI"}
           </button>
           {draft.status === "failed" && (
@@ -81,12 +131,21 @@ export function DraftPage() {
               className="secondary"
               disabled={busy}
               onClick={() =>
-                save({ title, excerpt, body_markdown: body, tags: draft.tags })
+                saveMutation.mutate({
+                  title,
+                  excerpt,
+                  body_markdown: body,
+                  tags: draft.tags,
+                })
               }
             >
               Save edits
             </button>
-            <button onClick={generate} className="secondary" disabled={busy}>
+            <button
+              onClick={() => generateMutation.mutate()}
+              className="secondary"
+              disabled={busy}
+            >
               Regenerate
             </button>
             {draft.status !== "published" && (
