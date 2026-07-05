@@ -24,6 +24,35 @@ async def create(db: AsyncSession, author: User, data) -> Draft:
     return draft
 
 
+async def create_from_content(db: AsyncSession, author: User, data) -> Draft:
+    """Persist the output of the 'revise my own draft' flow directly as a
+    ready-to-edit Draft.
+
+    That flow has no topic/audience/tone brief \u2014 only the final generated
+    content \u2014 so this bypasses the PENDING -> generate lifecycle and lands
+    straight in READY, reusing the same edit/publish endpoints as generated
+    drafts.
+    """
+    reading_time = max(1, round(len(data.body_markdown.split()) / 225))
+    draft = Draft(
+        author_id=author.id,
+        topic=data.title[:200],
+        audience="Revised from the author's own draft",
+        tone="conversational",
+        key_points=[],
+        status=DraftStatus.READY,
+        title=data.title,
+        excerpt=data.excerpt,
+        body_markdown=data.body_markdown,
+        tags=data.tags,
+        reading_time_minutes=reading_time,
+    )
+    db.add(draft)
+    await db.commit()
+    await db.refresh(draft)
+    return draft
+
+
 async def list_for_author(db: AsyncSession, author: User) -> list[Draft]:
     result = await db.execute(
         select(Draft)

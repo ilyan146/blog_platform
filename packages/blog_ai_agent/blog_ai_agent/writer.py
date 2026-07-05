@@ -23,7 +23,10 @@ from blog_ai_agent.models import (
     TARGET_READ_MINUTES,
     BlogBrief,
     BlogDraft,
+    RevisionBrief,
+    ResearchNotes,
 )
+from blog_ai_agent.progress import OnProgress, wrap_progress_handler
 
 SYSTEM_PROMPT = f"""\
 You are a senior editor who writes engaging, accurate blog posts.
@@ -39,6 +42,25 @@ Every post you write MUST:
 Return your answer strictly in the required structured format.
 """
 
+REVISE_SYSTEM_PROMPT = f"""\
+You are a senior editor who revises an author's own blog draft into a
+polished, publishable post.
+
+You will be given the author's draft (and possibly links they included) plus
+research notes gathered from those links. The revised post MUST:
+- Preserve the author's core ideas, voice, and intent — this is a revision,
+  not a new post on a related topic.
+- Be a {TARGET_READ_MINUTES}-minute read: between {MIN_WORDS} and {MAX_WORDS} words.
+- Be valid GitHub-flavored Markdown with a clear structure: a short intro,
+  2-4 `##` sections, and a brief conclusion. Do NOT include an H1 title in the
+  body (the title is a separate field).
+- Incorporate relevant facts from the research notes where they strengthen
+  the post. Do not invent facts beyond what the author's draft or the
+  research notes provide.
+
+Return your answer strictly in the required structured format.
+"""
+
 
 @dataclass(frozen=True)
 class AzureConfig:
@@ -50,28 +72,60 @@ class AzureConfig:
     api_version: str = "2024-10-21"
 
 
+def build_azure_model(config: AzureConfig) -> OpenAIChatModel:
+    """Shared model construction so every agent in this package (writer,
+    researcher, ...) talks to the same Azure AI Foundry deployment."""
+    return OpenAIChatModel(
+        config.deployment,
+        provider=AzureProvider(
+            azure_endpoint=config.endpoint,
+            api_version=config.api_version,
+            api_key=config.api_key,
+        ),
+    )
+
+
 class BlogWriter:
-    """Generates validated `BlogDraft`s from a `BlogBrief`."""
+    """Generates validated `BlogDraft`s from a `BlogBrief`, or revises an
+    author's own draft (optionally grounded in `ResearchNotes`)."""
 
     def __init__(self, config: AzureConfig) -> None:
-        model = OpenAIChatModel(
-            config.deployment,
-            provider=AzureProvider(
-                azure_endpoint=config.endpoint,
-                api_version=config.api_version,
-                api_key=config.api_key,
-            ),
-        )
+        model = build_azure_model(config)
         self._agent: Agent[None, BlogDraft] = Agent(
             model,
             output_type=BlogDraft,
             system_prompt=SYSTEM_PROMPT,
         )
+        self._revise_agent: Agent[None, BlogDraft] = Agent(
+            model,
+            output_type=BlogDraft,
+            system_prompt=REVISE_SYSTEM_PROMPT,
+        )
 
-    async def write(self, brief: BlogBrief) -> BlogDraft:
+    async def write(self, brief: BlogBrief, *, on_progress: OnProgress | None = None) -> BlogDraft:
         """Run the agent. Raises `BlogGenerationError` on any failure."""
         try:
-            result = await self._agent.run(brief.to_prompt())
+            result = await self._agent.run(
+                brief.to_prompt(), event_stream_handler=wrap_progress_handler(on_progress)
+            )
+        except Exception as exc:  # noqa: BLE001 - normalize SDK/model errors
+            raise BlogGenerationError(str(exc)) from exc
+        return result.output
+
+    async def revise(
+        self,
+        brief: RevisionBrief,
+        notes: ResearchNotes,
+        *,
+        on_progress: OnProgress | None = None,
+    ) -> BlogDraft:
+        """Rewrite the author's own draft into a 5-minute read, grounded in
+        `notes`. Raises `BlogGenerationError` on any failure."""
+        prompt = f"{brief.to_prompt()}\n\n{notes.to_prompt()}"
+        try:
+            result = await self._revise_agent.run(
+                prompt, event_stream_handler=wrap_progress_handler(on_progress)
+            )
         except Exception as exc:  # noqa: BLE001 - normalize SDK/model errors
             raise BlogGenerationError(str(exc)) from exc
         return result.output

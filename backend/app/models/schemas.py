@@ -81,6 +81,30 @@ class DraftPublic(BaseModel):
     updated_at: datetime
 
 
+# --- Revisions -----------------------------------------------------------
+# The "revise my own draft" flow: stateless (streamed, nothing persisted
+# mid-flight); the client explicitly saves the final result as a Draft.
+
+
+class RevisionRequest(BaseModel):
+    """The author's own draft, submitted to be reworked into a 5-minute read.
+
+    Links are extracted server-side from `draft_text` (they're just pasted
+    inline by the author) rather than supplied as a separate field.
+    """
+
+    draft_text: str = Field(min_length=1)
+
+
+class DraftSaveFromRevision(BaseModel):
+    """Persists the final output of the revise flow as an editable Draft."""
+
+    title: str = Field(min_length=3, max_length=120)
+    excerpt: str = Field(min_length=20, max_length=320)
+    body_markdown: str = Field(min_length=1)
+    tags: list[str] = Field(default_factory=list, max_length=6)
+
+
 # --- Posts --------------------------------------------------------------
 
 

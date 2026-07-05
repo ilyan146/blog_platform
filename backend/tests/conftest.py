@@ -16,16 +16,32 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from blog_ai_agent import BlogBrief, BlogDraft
+from blog_ai_agent import BlogBrief, BlogDraft, RevisionBrief, ResearchNotes
 
-from app.ai import get_writer
+from app.ai import get_researcher, get_writer
 from app.db import get_db
 from app.main import app
 from app.models.orm import Base
 
 
+class FakeResearcher:
+    """Returns deterministic notes — no subprocess, no browser."""
+
+    async def research(self, brief: RevisionBrief, *, on_progress=None) -> ResearchNotes:
+        return ResearchNotes(summary="Fake research summary.", sources=list(brief.links))
+
+
 class FakeWriter:
     """Returns a deterministic draft — no network, no Azure."""
+
+    async def revise(self, brief: RevisionBrief, notes: ResearchNotes, *, on_progress=None) -> BlogDraft:
+        body = " ".join(["word"] * 1100)
+        return BlogDraft(
+            title="Revised draft",
+            excerpt="A concise, deterministic excerpt for testing purposes.",
+            body_markdown=body,
+            tags=["revised"],
+        )
 
     async def write(self, brief: BlogBrief) -> BlogDraft:
         body = " ".join(["word"] * 1100)
@@ -50,6 +66,7 @@ async def client():
 
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_writer] = lambda: FakeWriter()
+    app.dependency_overrides[get_researcher] = lambda: FakeResearcher()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:

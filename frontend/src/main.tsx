@@ -10,6 +10,7 @@ import { DashboardPage } from "./pages/DashboardPage"
 import { DraftPage } from "./pages/DraftPage"
 import { HomePage } from "./pages/HomePage"
 import { PostPage } from "./pages/PostPage"
+import { RevisePage } from "./pages/RevisePage"
 import "./styles.css"
 
 const router = createBrowserRouter([
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
         children: [
           { path: "/dashboard", element: <DashboardPage /> },
           { path: "/drafts/:id", element: <DraftPage /> },
+          { path: "/revise", element: <RevisePage /> },
         ],
       },
     ],

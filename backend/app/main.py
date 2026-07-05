@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, drafts, posts
+from app.api import auth, drafts, posts, revisions
 from app.config import settings
 from app.db import init_db
 from app.errors import AppError
@@ -51,6 +51,7 @@ async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
 app.include_router(auth.router)
 app.include_router(drafts.router)
 app.include_router(posts.router)
+app.include_router(revisions.router)
 
 
 @app.get("/health", tags=["health"])

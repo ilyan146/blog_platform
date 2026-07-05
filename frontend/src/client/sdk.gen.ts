@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateDraftData, CreateDraftErrors, CreateDraftResponses, EditDraftData, EditDraftErrors, EditDraftResponses, GenerateDraftData, GenerateDraftErrors, GenerateDraftResponses, GetDraftData, GetDraftErrors, GetDraftResponses, GetPostData, GetPostErrors, GetPostResponses, HealthData, HealthResponses, ListDraftsData, ListDraftsResponses, ListPostsData, ListPostsResponses, LoginData, LoginErrors, LoginResponses, MeData, MeResponses, PublishDraftData, PublishDraftErrors, PublishDraftResponses, RegisterData, RegisterErrors, RegisterResponses } from './types.gen';
+import type { CreateDraftData, CreateDraftErrors, CreateDraftResponses, EditDraftData, EditDraftErrors, EditDraftResponses, GenerateDraftData, GenerateDraftErrors, GenerateDraftResponses, GetDraftData, GetDraftErrors, GetDraftResponses, GetPostData, GetPostErrors, GetPostResponses, HealthData, HealthResponses, ListDraftsData, ListDraftsResponses, ListPostsData, ListPostsResponses, LoginData, LoginErrors, LoginResponses, MeData, MeResponses, PublishDraftData, PublishDraftErrors, PublishDraftResponses, RegisterData, RegisterErrors, RegisterResponses, SaveRevisionAsDraftData, SaveRevisionAsDraftErrors, SaveRevisionAsDraftResponses, StreamRevisionData, StreamRevisionErrors, StreamRevisionResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -74,6 +74,22 @@ export const createDraft = <ThrowOnError extends boolean = false>(options: Optio
 });
 
 /**
+ * Save Revision As Draft
+ *
+ * Persist the final result of the 'revise my own draft' flow (see
+ * POST /api/revisions/stream) as an editable, publishable Draft.
+ */
+export const saveRevisionAsDraft = <ThrowOnError extends boolean = false>(options: Options<SaveRevisionAsDraftData, ThrowOnError>): RequestResult<SaveRevisionAsDraftResponses, SaveRevisionAsDraftErrors, ThrowOnError> => (options.client ?? client).post<SaveRevisionAsDraftResponses, SaveRevisionAsDraftErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/drafts/from-revision',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Get Draft
  */
 export const getDraft = <ThrowOnError extends boolean = false>(options: Options<GetDraftData, ThrowOnError>): RequestResult<GetDraftResponses, GetDraftErrors, ThrowOnError> => (options.client ?? client).get<GetDraftResponses, GetDraftErrors, ThrowOnError>({
@@ -122,6 +138,19 @@ export const listPosts = <ThrowOnError extends boolean = false>(options?: Option
  * Get Post
  */
 export const getPost = <ThrowOnError extends boolean = false>(options: Options<GetPostData, ThrowOnError>): RequestResult<GetPostResponses, GetPostErrors, ThrowOnError> => (options.client ?? client).get<GetPostResponses, GetPostErrors, ThrowOnError>({ url: '/api/posts/{slug}', ...options });
+
+/**
+ * Stream Revision
+ */
+export const streamRevision = <ThrowOnError extends boolean = false>(options: Options<StreamRevisionData, ThrowOnError>): RequestResult<StreamRevisionResponses, StreamRevisionErrors, ThrowOnError> => (options.client ?? client).post<StreamRevisionResponses, StreamRevisionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/revisions/stream',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Health

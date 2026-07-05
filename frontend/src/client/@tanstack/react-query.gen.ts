@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createDraft, editDraft, generateDraft, getDraft, getPost, health, listDrafts, listPosts, login, me, type Options, publishDraft, register } from '../sdk.gen';
-import type { CreateDraftData, CreateDraftError, CreateDraftResponse, EditDraftData, EditDraftError, EditDraftResponse, GenerateDraftData, GenerateDraftError, GenerateDraftResponse, GetDraftData, GetDraftError, GetDraftResponse, GetPostData, GetPostError, GetPostResponse, HealthData, ListDraftsData, ListDraftsResponse, ListPostsData, ListPostsResponse, LoginData, LoginError, LoginResponse, MeData, MeResponse, PublishDraftData, PublishDraftError, PublishDraftResponse, RegisterData, RegisterError, RegisterResponse } from '../types.gen';
+import { createDraft, editDraft, generateDraft, getDraft, getPost, health, listDrafts, listPosts, login, me, type Options, publishDraft, register, saveRevisionAsDraft, streamRevision } from '../sdk.gen';
+import type { CreateDraftData, CreateDraftError, CreateDraftResponse, EditDraftData, EditDraftError, EditDraftResponse, GenerateDraftData, GenerateDraftError, GenerateDraftResponse, GetDraftData, GetDraftError, GetDraftResponse, GetPostData, GetPostError, GetPostResponse, HealthData, ListDraftsData, ListDraftsResponse, ListPostsData, ListPostsResponse, LoginData, LoginError, LoginResponse, MeData, MeResponse, PublishDraftData, PublishDraftError, PublishDraftResponse, RegisterData, RegisterError, RegisterResponse, SaveRevisionAsDraftData, SaveRevisionAsDraftError, SaveRevisionAsDraftResponse, StreamRevisionData, StreamRevisionError } from '../types.gen';
 
 /**
  * Register
@@ -126,6 +126,26 @@ export const createDraftMutation = (options?: Partial<Options<CreateDraftData>>)
     return mutationOptions;
 };
 
+/**
+ * Save Revision As Draft
+ *
+ * Persist the final result of the 'revise my own draft' flow (see
+ * POST /api/revisions/stream) as an editable, publishable Draft.
+ */
+export const saveRevisionAsDraftMutation = (options?: Partial<Options<SaveRevisionAsDraftData>>): UseMutationOptions<SaveRevisionAsDraftResponse, SaveRevisionAsDraftError, Options<SaveRevisionAsDraftData>> => {
+    const mutationOptions: UseMutationOptions<SaveRevisionAsDraftResponse, SaveRevisionAsDraftError, Options<SaveRevisionAsDraftData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await saveRevisionAsDraft({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const getDraftQueryKey = (options: Options<GetDraftData>) => createQueryKey('getDraft', options);
 
 /**
@@ -230,6 +250,23 @@ export const getPostOptions = (options: Options<GetPostData>) => queryOptions<Ge
     },
     queryKey: getPostQueryKey(options)
 });
+
+/**
+ * Stream Revision
+ */
+export const streamRevisionMutation = (options?: Partial<Options<StreamRevisionData>>): UseMutationOptions<unknown, StreamRevisionError, Options<StreamRevisionData>> => {
+    const mutationOptions: UseMutationOptions<unknown, StreamRevisionError, Options<StreamRevisionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await streamRevision({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 export const healthQueryKey = (options?: Options<HealthData>) => createQueryKey('health', options);
 

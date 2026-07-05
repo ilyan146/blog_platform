@@ -80,3 +80,56 @@ class BlogDraft(BaseModel):
     @property
     def reading_time_minutes(self) -> int:
         return max(1, round(self.word_count / WORDS_PER_MINUTE))
+
+
+class RevisionBrief(BaseModel):
+    """What the author submits for the 'revise my own draft' flow.
+
+    Unlike `BlogBrief` (a topic to write from scratch), this carries the
+    author's own text plus any links they dropped in for extra context.
+    """
+
+    draft_text: str = Field(min_length=1, description="The author's own draft or notes.")
+    links: list[str] = Field(
+        default_factory=list,
+        max_length=10,
+        description="URLs found in the draft text, to be researched for context.",
+    )
+
+    def to_prompt(self) -> str:
+        """Render the brief as the user-turn prompt for the researcher/writer agents."""
+        lines = [f"Author's draft:\n{self.draft_text}"]
+        if self.links:
+            links = "\n".join(f"- {link}" for link in self.links)
+            lines.append(f"Links the author wants used as context:\n{links}")
+        return "\n\n".join(lines)
+
+
+class ResearchNotes(BaseModel):
+    """Grounding context the researcher agent distills from linked sources."""
+
+    summary: str = Field(
+        min_length=1,
+        description="Condensed synthesis of the linked sources, relevant to the author's draft.",
+    )
+    key_facts: list[str] = Field(
+        default_factory=list,
+        max_length=15,
+        description="Discrete facts/points worth incorporating into the revision.",
+    )
+    sources: list[str] = Field(
+        default_factory=list,
+        description="URLs actually consulted (a subset of the links supplied, if some failed).",
+    )
+
+    def to_prompt(self) -> str:
+        """Render the notes as context for the writer agent's revision prompt."""
+        if not self.key_facts and not self.sources:
+            return f"Research notes: {self.summary}"
+        lines = [f"Research notes:\n{self.summary}"]
+        if self.key_facts:
+            facts = "\n".join(f"- {fact}" for fact in self.key_facts)
+            lines.append(f"Key facts to consider:\n{facts}")
+        if self.sources:
+            lines.append("Sources consulted:\n" + "\n".join(f"- {src}" for src in self.sources))
+        return "\n\n".join(lines)

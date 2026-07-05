@@ -12,6 +12,7 @@ export function NavBar() {
         {user ? (
           <>
             <Link to="/dashboard">Dashboard</Link>
+            <Link to="/revise">Revise</Link>
             <button className="link-btn" onClick={logout}>
               Log out ({user.display_name})
             </button>

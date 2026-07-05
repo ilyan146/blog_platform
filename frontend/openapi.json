@@ -187,6 +187,53 @@
         ]
       }
     },
+    "/api/drafts/from-revision": {
+      "post": {
+        "tags": [
+          "drafts"
+        ],
+        "summary": "Save Revision As Draft",
+        "description": "Persist the final result of the 'revise my own draft' flow (see\nPOST /api/revisions/stream) as an editable, publishable Draft.",
+        "operationId": "save_revision_as_draft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftSaveFromRevision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftPublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/drafts/{draft_id}": {
       "get": {
         "tags": [
@@ -450,6 +497,50 @@
         }
       }
     },
+    "/api/revisions/stream": {
+      "post": {
+        "tags": [
+          "revisions"
+        ],
+        "summary": "Stream Revision",
+        "operationId": "stream_revision",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -663,6 +754,43 @@
         ],
         "title": "DraftPublic"
       },
+      "DraftSaveFromRevision": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Title"
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 20,
+            "title": "Excerpt"
+          },
+          "body_markdown": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Body Markdown"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "excerpt",
+          "body_markdown"
+        ],
+        "title": "DraftSaveFromRevision",
+        "description": "Persists the final output of the revise flow as an editable Draft."
+      },
       "DraftStatus": {
         "type": "string",
         "enum": [
@@ -787,6 +915,21 @@
         ],
         "title": "PostSummary",
         "description": "Listing view \u2014 omits the full body to keep payloads small."
+      },
+      "RevisionRequest": {
+        "properties": {
+          "draft_text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Draft Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draft_text"
+        ],
+        "title": "RevisionRequest",
+        "description": "The author's own draft, submitted to be reworked into a 5-minute read.\n\nLinks are extracted server-side from `draft_text` (they're just pasted\ninline by the author) rather than supplied as a separate field."
       },
       "TokenResponse": {
         "properties": {

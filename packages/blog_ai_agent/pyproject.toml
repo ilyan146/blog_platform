@@ -5,7 +5,7 @@ description = "AI agent that writes 5-minute-read blog posts using Pydantic AI +
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.7",
-    "pydantic-ai>=0.0.14",
+    "pydantic-ai>=1.0",
 ]
 
 [build-system]

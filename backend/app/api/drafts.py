@@ -6,7 +6,7 @@ from blog_ai_agent import BlogWriter
 
 from app.ai import get_writer
 from app.dependencies import CurrentUser, DbSession
-from app.models.schemas import DraftCreate, DraftEdit, DraftPublic, PostPublic
+from app.models.schemas import DraftCreate, DraftEdit, DraftPublic, DraftSaveFromRevision, PostPublic
 from app.services import draft_service, post_service
 
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
@@ -17,6 +17,13 @@ Writer = Annotated[BlogWriter, Depends(get_writer)]
 @router.post("", response_model=DraftPublic, status_code=201)
 async def create_draft(body: DraftCreate, user: CurrentUser, db: DbSession):
     return await draft_service.create(db, user, body)
+
+
+@router.post("/from-revision", response_model=DraftPublic, status_code=201)
+async def save_revision_as_draft(body: DraftSaveFromRevision, user: CurrentUser, db: DbSession):
+    """Persist the final result of the 'revise my own draft' flow (see
+    POST /api/revisions/stream) as an editable, publishable Draft."""
+    return await draft_service.create_from_content(db, user, body)
 
 
 @router.get("", response_model=list[DraftPublic])

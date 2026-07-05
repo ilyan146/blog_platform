@@ -110,6 +110,30 @@ export type DraftPublic = {
 };
 
 /**
+ * DraftSaveFromRevision
+ *
+ * Persists the final output of the revise flow as an editable Draft.
+ */
+export type DraftSaveFromRevision = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Excerpt
+     */
+    excerpt: string;
+    /**
+     * Body Markdown
+     */
+    body_markdown: string;
+    /**
+     * Tags
+     */
+    tags?: Array<string>;
+};
+
+/**
  * DraftStatus
  *
  * Lifecycle of an AI generation request attached to a draft.
@@ -198,6 +222,21 @@ export type PostSummary = {
      * Published At
      */
     published_at: string;
+};
+
+/**
+ * RevisionRequest
+ *
+ * The author's own draft, submitted to be reworked into a 5-minute read.
+ *
+ * Links are extracted server-side from `draft_text` (they're just pasted
+ * inline by the author) rather than supplied as a separate field.
+ */
+export type RevisionRequest = {
+    /**
+     * Draft Text
+     */
+    draft_text: string;
 };
 
 /**
@@ -402,6 +441,31 @@ export type CreateDraftResponses = {
 
 export type CreateDraftResponse = CreateDraftResponses[keyof CreateDraftResponses];
 
+export type SaveRevisionAsDraftData = {
+    body: DraftSaveFromRevision;
+    path?: never;
+    query?: never;
+    url: '/api/drafts/from-revision';
+};
+
+export type SaveRevisionAsDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveRevisionAsDraftError = SaveRevisionAsDraftErrors[keyof SaveRevisionAsDraftErrors];
+
+export type SaveRevisionAsDraftResponses = {
+    /**
+     * Successful Response
+     */
+    201: DraftPublic;
+};
+
+export type SaveRevisionAsDraftResponse = SaveRevisionAsDraftResponses[keyof SaveRevisionAsDraftResponses];
+
 export type GetDraftData = {
     body?: never;
     path: {
@@ -569,6 +633,29 @@ export type GetPostResponses = {
 };
 
 export type GetPostResponse = GetPostResponses[keyof GetPostResponses];
+
+export type StreamRevisionData = {
+    body: RevisionRequest;
+    path?: never;
+    query?: never;
+    url: '/api/revisions/stream';
+};
+
+export type StreamRevisionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StreamRevisionError = StreamRevisionErrors[keyof StreamRevisionErrors];
+
+export type StreamRevisionResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type HealthData = {
     body?: never;

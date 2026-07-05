@@ -4,3 +4,7 @@ class BlogAIError(Exception):
 
 class BlogGenerationError(BlogAIError):
     """Raised when the model fails to produce a usable, valid draft."""
+
+
+class BlogResearchError(BlogAIError):
+    """Raised when the researcher agent fails to gather grounding context."""

@@ -76,6 +76,17 @@ body {
 .between {
   justify-content: space-between;
 }
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
 
 input,
 select,

@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     azure_openai_deployment: str
     azure_openai_api_version: str = "2024-10-21"
 
+    # --- Playwright MCP (used by the researcher agent in the revise flow) ---
+    playwright_mcp_command: str = "npx"
+    playwright_mcp_args: list[str] = [
+        "-y",
+        "@playwright/mcp@latest",
+        "--headless",
+        "--isolated",
+    ]
+
 
 @lru_cache
 def get_settings() -> Settings:
